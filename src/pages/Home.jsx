@@ -477,7 +477,7 @@ const Home = () => {
                   </div>
                   <div>
                     <h1 className="text-3xl font-light tracking-tight text-gray-900">
-                      <span className="font-serif italic text-[#7a6103]">ηλιοβαSeaλεμα</span>
+                      <span className="font-serif italic text-[#7a6103]">ΗλιοβαSeaλεμα</span>
                     </h1>
                     <p className="text-sm text-gray-500 mt-0.5 flex items-center gap-1.5">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
