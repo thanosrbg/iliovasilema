@@ -341,7 +341,7 @@ const Home = () => {
 
   const nights = calculateNights();
 
-  // Places data - Syrros
+  // Places data - Syros
   const places = [
     {
       id: 1,
@@ -357,7 +357,7 @@ const Home = () => {
       name: 'Ermoupoli',
       category: 'Historical',
       distance: '4.5 km',
-      description: 'The capital of Syrros with neoclassical architecture, charming alleys, and vibrant culture.',
+      description: 'The capital of Syros with neoclassical architecture, charming alleys, and vibrant culture.',
       rating: 4.9,
       image: '🏛️'
     },
@@ -411,7 +411,7 @@ const Home = () => {
       name: 'Syros Island Museum',
       category: 'Culture',
       distance: '4.3 km',
-      description: 'Museum showcasing the rich history, art, and maritime heritage of Syrros island.',
+      description: 'Museum showcasing the rich history, art, and maritime heritage of Syros island.',
       rating: 4.6,
       image: '🏺'
     }
@@ -514,7 +514,7 @@ const Home = () => {
                 }`}
               >
                 <MapPin />
-                Explore Syrros
+                Explore Syros
               </button>
             </div>
           </div>
@@ -817,12 +817,12 @@ const Home = () => {
                 )}
               </div>
             ) : (
-              // Places Tab - Explore Syrros
+              // Places Tab - Explore Syros
               <div className="max-w-3xl mx-auto">
                 <div className="mb-6">
                   <h2 className="text-xl font-light text-gray-800 flex items-center gap-2">
                     <span className="text-2xl">🏝️</span>
-                    Discover Syrros
+                    Discover Syros
                     <span className="text-sm font-normal text-gray-400 ml-2">• {places.length} amazing places</span>
                   </h2>
                 </div>
@@ -889,7 +889,7 @@ const Home = () => {
                 )}
 
                 <button className="w-full mt-6 py-3.5 border-2 border-blue-200 text-blue-900 rounded-xl text-sm font-medium hover:border-blue-300 hover:bg-blue-50 transition-all duration-200">
-                  Explore all points of interest on Syrros →
+                  Explore all points of interest on Syros →
                 </button>
               </div>
             )}
