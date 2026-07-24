@@ -14,6 +14,9 @@ import img9 from '../assets/apartment/livingroom_3.jpg';
 // Import Syros background image directly
 import syrosBg from '../assets/Syros.jpg';
 
+// Import Sun logo
+import sunLogo from '../assets/sun_logo.png';
+
 // Inline SVG icons
 const CalendarDays = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -201,6 +204,18 @@ const Home = () => {
         };
         bgImage.onerror = () => {
           console.warn('Background image failed to load');
+        };
+      }
+
+      // Preload sun logo
+      if (sunLogo) {
+        const sunImage = new Image();
+        sunImage.src = sunLogo;
+        sunImage.onload = () => {
+          console.log('Sun logo loaded successfully');
+        };
+        sunImage.onerror = () => {
+          console.warn('Sun logo failed to load');
         };
       }
 
@@ -443,24 +458,26 @@ const Home = () => {
         />
         
         {/* Subtle gradient overlay for readability */}
-        <div className="fixed inset-0 z-0 bg-gradient-to-b from-white/15 to-gray-50/60" />
+        <div className="fixed inset-0 z-0 bg-linear-to-b from-white/15 to-gray-50/60" />
 
         {/* Main container */}
         <div className="relative z-10 w-full max-w-4xl bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl border border-gray-100/80 overflow-hidden transition-all duration-200">
           {/* Header */}
-          <div className="px-8 pt-8 pb-4 border-b border-gray-50 bg-gradient-to-r from-blue-50/50 to-white/50">
+          <div className="px-8 pt-8 pb-4 border-b border-gray-50 bg-linear-to-b from-blue-50/50 to-white/50">
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-3">
-                  <span className="bg-blue-100/80 p-2 rounded-xl">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1e3a8a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                      <polyline points="9 22 9 12 15 12 15 22" />
-                    </svg>
-                  </span>
+                  {/* Sun Logo Image - No background, 5x bigger */}
+                  <div className="shrink-0">
+                    <img 
+                      src={sunLogo} 
+                      alt="Sun Logo" 
+                      className="w-37.5 h-37.5 object-contain"
+                    />
+                  </div>
                   <div>
                     <h1 className="text-3xl font-light tracking-tight text-gray-900">
-                      <span className="font-serif italic text-blue-900">iliovasealema</span>
+                      <span className="font-serif italic text-[#7a6103]">ηλιοβαSeaλεμα</span>
                     </h1>
                     <p className="text-sm text-gray-500 mt-0.5 flex items-center gap-1.5">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -468,17 +485,12 @@ const Home = () => {
                         <line x1="2" y1="12" x2="22" y2="12"></line>
                         <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
                       </svg>
-                      Syros Island, Greece
+                       Cycladic elegance & sea view • Syros, Greece
                     </p>
                   </div>
                 </div>
               </div>
-              <div className="hidden sm:block text-right">
-                <div className="text-xs text-gray-400">★★★★★</div>
-                <div className="text-xs text-gray-400 mt-0.5">4.9 · 127 reviews</div>
-              </div>
             </div>
-            <p className="text-sm text-gray-600 mt-2 ml-12 italic">Where the sun meets the sea</p>
           </div>
 
           {/* Tabs */}
@@ -746,7 +758,7 @@ const Home = () => {
                       className="group bg-gray-50/60 border border-gray-100 rounded-xl overflow-hidden hover:border-blue-200 hover:shadow-md transition-all duration-200 cursor-pointer"
                       onClick={() => setSelectedImage(photo)}
                     >
-                      <div className="relative aspect-[4/3] bg-gray-100 overflow-hidden">
+                      <div className="relative aspect-4/3 bg-gray-100 overflow-hidden">
                         {!loadedImages[photo.id] && !imageErrors[photo.id] && (
                           <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
                             <div className="animate-pulse flex flex-col items-center">
@@ -849,7 +861,7 @@ const Home = () => {
                   {filteredPlaces.map((place) => (
                     <div key={place.id} className="bg-gray-50/60 border border-gray-100 rounded-xl p-4 hover:border-blue-200 hover:bg-gray-50 hover:shadow-md transition-all duration-200">
                       <div className="flex items-start gap-3">
-                        <div className="text-3xl bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex-shrink-0">
+                        <div className="text-3xl bg-white p-2 rounded-xl shadow-sm border border-gray-100 shrink-0">
                           {place.image}
                         </div>
                         
@@ -863,7 +875,7 @@ const Home = () => {
                                 <span className="text-xs text-gray-500">{place.distance}</span>
                               </div>
                             </div>
-                            <div className="flex items-center gap-1 bg-white px-2 py-0.5 rounded-full border border-gray-200 flex-shrink-0">
+                            <div className="flex items-center gap-1 bg-white px-2 py-0.5 rounded-full border border-gray-200 shrink-0">
                               <span className="text-xs font-medium text-gray-700">★</span>
                               <span className="text-xs font-medium text-gray-700">{place.rating}</span>
                             </div>
