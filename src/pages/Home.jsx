@@ -405,7 +405,7 @@ const Home = () => {
                 <div className="text-xs text-gray-400 mt-0.5">4.9 · 127 reviews</div>
               </div>
             </div>
-            <p className="text-sm text-gray-600 mt-2 ml-12 italic">✨ Where the sun meets the sea</p>
+            <p className="text-sm text-gray-600 mt-2 ml-12 italic">Where the sun meets the sea</p>
           </div>
 
           {/* Tabs */}
