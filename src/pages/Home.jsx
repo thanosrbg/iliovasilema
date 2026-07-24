@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-// Import images directly from the apartment folder
 // Import images directly from the apartment folder - EXACT filenames
 import img1 from '../assets/apartment/bathroom.jpg';
 import img2 from '../assets/apartment/bathroom_2.jpg';
@@ -234,19 +233,50 @@ const Home = () => {
     return `${day}-${month}-${year}`;
   };
 
-  // Handler for increment/decrement guests
+  // Handler for increment/decrement guests with new rules
   const updateGuest = (type, operation) => {
     const setters = {
-      adults: { set: setAdults, min: 1, max: 16 },
-      children: { set: setChildren, min: 0, max: 10 },
-      infants: { set: setInfants, min: 0, max: 5 },
+      adults: { 
+        set: setAdults, 
+        min: 1, 
+        max: 3,
+        getMax: () => {
+          // Max adults is always 3
+          return 3;
+        }
+      },
+      children: { 
+        set: setChildren, 
+        min: 0, 
+        max: () => {
+          // If adults >= 3, max children is 0
+          if (adults >= 3) return 0;
+          // If adults <= 2, max children is 2
+          return 2;
+        },
+        getMax: () => {
+          if (adults >= 3) return 0;
+          return 2;
+        }
+      },
+      infants: { 
+        set: setInfants, 
+        min: 0, 
+        max: 5 
+      },
     };
+    
     const { set, min, max } = setters[type];
+    const maxValue = typeof max === 'function' ? max() : max;
+    
     set((prev) => {
       const newVal = operation === 'inc' ? prev + 1 : prev - 1;
-      return Math.min(Math.max(newVal, min), max);
+      return Math.min(Math.max(newVal, min), maxValue);
     });
   };
+
+  // Check if children should be disabled
+  const isChildrenDisabled = adults >= 3;
 
   // Total guests for display
   const totalGuests = adults + children;
@@ -258,6 +288,13 @@ const Home = () => {
       alert('Please agree to the terms and conditions.');
       return;
     }
+    
+    // Validation for guest rules
+    if (adults >= 3 && children > 0) {
+      alert('With 3 adults, children are not allowed. Please adjust your guest count.');
+      return;
+    }
+    
     const bookingData = {
       checkIn: formatDateDisplay(checkIn),
       checkOut: formatDateDisplay(checkOut),
@@ -553,6 +590,9 @@ const Home = () => {
                     <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
                       <span className="text-gray-400"><Users /></span>
                       <span>Number of guests</span>
+                      <span className="text-xs text-gray-400 ml-2">
+                        (Max 3 adults, children only with 1-2 adults)
+                      </span>
                     </div>
                     
                     <div 
@@ -571,40 +611,58 @@ const Home = () => {
                     {showGuestPicker && (
                       <div className="absolute left-0 right-0 top-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg p-6 z-10">
                         <div className="space-y-4">
+                          {/* Adults */}
                           <div className="flex items-center justify-between">
                             <div>
                               <div className="text-sm font-medium text-gray-800">Adults</div>
-                              <div className="text-xs text-gray-400">Age 13+</div>
+                              <div className="text-xs text-gray-400">Age 13+ (Max 3)</div>
                             </div>
                             <div className="flex items-center gap-3">
                               <button type="button" onClick={() => updateGuest('adults', 'dec')} disabled={adults <= 1} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
                                 <Minus />
                               </button>
                               <span className="w-6 text-center text-sm font-medium">{adults}</span>
-                              <button type="button" onClick={() => updateGuest('adults', 'inc')} disabled={adults >= 16} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                              <button type="button" onClick={() => updateGuest('adults', 'inc')} disabled={adults >= 3} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
                                 <Plus />
                               </button>
                             </div>
                           </div>
+                          
+                          {/* Children */}
                           <div className="flex items-center justify-between">
                             <div>
                               <div className="text-sm font-medium text-gray-800">Children</div>
-                              <div className="text-xs text-gray-400">Ages 2–12</div>
+                              <div className="text-xs text-gray-400">
+                                Ages 2–12 
+                                {adults >= 3 ? ' (Not allowed with 3 adults)' : ' (Max 2)'}
+                              </div>
                             </div>
                             <div className="flex items-center gap-3">
-                              <button type="button" onClick={() => updateGuest('children', 'dec')} disabled={children <= 0} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                              <button 
+                                type="button" 
+                                onClick={() => updateGuest('children', 'dec')} 
+                                disabled={children <= 0 || isChildrenDisabled} 
+                                className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                              >
                                 <Minus />
                               </button>
                               <span className="w-6 text-center text-sm font-medium">{children}</span>
-                              <button type="button" onClick={() => updateGuest('children', 'inc')} disabled={children >= 10} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                              <button 
+                                type="button" 
+                                onClick={() => updateGuest('children', 'inc')} 
+                                disabled={children >= 2 || isChildrenDisabled} 
+                                className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                              >
                                 <Plus />
                               </button>
                             </div>
                           </div>
+                          
+                          {/* Infants */}
                           <div className="flex items-center justify-between">
                             <div>
                               <div className="text-sm font-medium text-gray-800">Infants</div>
-                              <div className="text-xs text-gray-400">Under 2</div>
+                              <div className="text-xs text-gray-400">Under 2 (Max 5)</div>
                             </div>
                             <div className="flex items-center gap-3">
                               <button type="button" onClick={() => updateGuest('infants', 'dec')} disabled={infants <= 0} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
@@ -616,6 +674,7 @@ const Home = () => {
                               </button>
                             </div>
                           </div>
+                          
                           <div className="pt-2 border-t border-gray-100 flex justify-end">
                             <button type="button" onClick={() => setShowGuestPicker(false)} className="text-sm font-medium text-gray-700 hover:text-black transition-colors">
                               Done
@@ -626,10 +685,19 @@ const Home = () => {
                     )}
                   </div>
 
-                  {/* Note about infants */}
+                  {/* Guest rules info */}
                   <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-3">
                     <p className="text-xs text-blue-800">
-                      👶 Infants (under 2) stay free of charge. Please add them to your booking.
+                      👶 Infants (under 2) stay free of charge. 
+                      {adults >= 3 ? (
+                        <span className="block mt-1 text-orange-600 font-medium">
+                          ⚠️ With 3 adults, children are not allowed.
+                        </span>
+                      ) : (
+                        <span className="block mt-1">
+                          Children (2-12) allowed only when adults are 1-2 (max 2 children).
+                        </span>
+                      )}
                     </p>
                   </div>
 
