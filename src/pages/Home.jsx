@@ -1,10 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 // Import images directly from the apartment folder
-import img1 from '../assets/apartment/pexels-chris-palladino-2158975358-38661229.jpg';
-import img2 from '../assets/apartment/pexels-hector-marabelle-2157578915-34978726.jpg';
-import img3 from '../assets/apartment/pexels-igor-starkov-233202-1693946.jpg';
-import img4 from '../assets/apartment/pexels-redrum-visuals-12684159.jpg';
+// Import images directly from the apartment folder - EXACT filenames
+import img1 from '../assets/apartment/bathroom.jpg';
+import img2 from '../assets/apartment/bathroom_2.jpg';
+import img3 from '../assets/apartment/bedroom.jpg';
+import img4 from '../assets/apartment/diningroom.jpg';
+import img5 from '../assets/apartment/diningroom_2.jpg';
+import img6 from '../assets/apartment/kichen.jpg';
+import img7 from '../assets/apartment/livingroom.jpg';
+import img8 from '../assets/apartment/livingroom_2.jpg';
+import img9 from '../assets/apartment/livingroom_3.jpg';
 
 // Import Syros background image directly
 import syrosBg from '../assets/Syros.jpg';
@@ -115,26 +121,56 @@ const Home = () => {
     {
       id: 1,
       url: img1,
-      title: 'Living Room',
-      description: 'Spacious living area with sea view'
+      title: 'Bathroom',
+      description: 'Modern bathroom with premium fixtures'
     },
     {
       id: 2,
       url: img2,
-      title: 'Bedroom',
-      description: 'Comfortable bedroom with natural light'
+      title: 'Bathroom 2',
+      description: 'Spacious bathroom with natural light'
     },
     {
       id: 3,
       url: img3,
-      title: 'Kitchen',
-      description: 'Modern fully equipped kitchen'
+      title: 'Bedroom',
+      description: 'Comfortable bedroom with king-size bed'
     },
     {
       id: 4,
       url: img4,
-      title: 'Bathroom',
-      description: 'Contemporary bathroom design'
+      title: 'Dining Room',
+      description: 'Elegant dining space for memorable meals'
+    },
+    {
+      id: 5,
+      url: img5,
+      title: 'Dining Room 2',
+      description: 'Additional dining area with sea view'
+    },
+    {
+      id: 6,
+      url: img6,
+      title: 'Kitchen',
+      description: 'Fully equipped modern kitchen'
+    },
+    {
+      id: 7,
+      url: img7,
+      title: 'Living Room',
+      description: 'Spacious living area with sea view'
+    },
+    {
+      id: 8,
+      url: img8,
+      title: 'Living Room 2',
+      description: 'Cozy living space with natural light'
+    },
+    {
+      id: 9,
+      url: img9,
+      title: 'Living Room 3',
+      description: 'Relaxing area with comfortable seating'
     }
   ];
 
@@ -387,7 +423,7 @@ const Home = () => {
                   </span>
                   <div>
                     <h1 className="text-3xl font-light tracking-tight text-gray-900">
-                      <span className="font-serif italic text-blue-900">Iliovasilema</span>
+                      <span className="font-serif italic text-blue-900">iliovasealema</span>
                     </h1>
                     <p className="text-sm text-gray-500 mt-0.5 flex items-center gap-1.5">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -634,8 +670,8 @@ const Home = () => {
                   </h2>
                 </div>
 
-                {/* Photos grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Photos grid - 3 columns for 9 images */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {apartmentImages.map((photo) => (
                     <div 
                       key={photo.id} 
@@ -669,7 +705,7 @@ const Home = () => {
                         )}
                       </div>
                       <div className="p-3">
-                        <p className="text-xs text-gray-600 text-center">{photo.title}</p>
+                        <p className="text-xs text-gray-600 text-center font-medium">{photo.title}</p>
                         <p className="text-xs text-gray-400 text-center mt-0.5">{photo.description}</p>
                       </div>
                     </div>
