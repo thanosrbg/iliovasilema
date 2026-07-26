@@ -17,6 +17,9 @@ import syrosBg from '../assets/Syros.jpg';
 // Import Sun logo
 import sunLogo from '../assets/sun_logo.png';
 
+// Import Supabase client
+import { supabase } from '../lib/supabase';
+
 // Inline SVG icons
 const CalendarDays = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -118,6 +121,62 @@ const Home = () => {
   const [fullName, setFullName] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
+  // Settings state from Supabase
+  const [settings, setSettings] = useState({
+    night_price: 120,
+    min_nights: 2,
+    max_adults: 3,
+    max_children: 2,
+    max_infants: 5
+  });
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [settingsError, setSettingsError] = useState(null);
+
+  // Constants - use from settings or fallback
+  const MIN_NIGHTS = settings.min_nights || 2;
+
+  // Fetch settings from Supabase
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        setSettingsLoading(true);
+        setSettingsError(null);
+
+        console.log('📖 Fetching settings from Supabase...');
+
+        const { data, error } = await supabase
+          .from('settings')
+          .select('*')
+          .eq('id', 1)
+          .single();
+
+        if (error) {
+          console.error('❌ Error fetching settings:', error);
+          throw error;
+        }
+
+        if (data) {
+          console.log('✅ Settings loaded:', data);
+          setSettings({
+            night_price: data.night_price || 120,
+            min_nights: data.min_nights || 2,
+            max_adults: data.max_adults || 3,
+            max_children: data.max_children || 2,
+            max_infants: data.max_infants || 5
+          });
+        }
+      } catch (err) {
+        console.error('❌ Failed to fetch settings:', err);
+        setSettingsError('Failed to load pricing. Using default values.');
+        // Keep default values
+      } finally {
+        setSettingsLoading(false);
+      }
+    };
+
+    fetchSettings();
+  }, []);
+
   // Apartment images array with metadata
   const apartmentImages = [
     {
@@ -176,6 +235,114 @@ const Home = () => {
     }
   ];
 
+  // Calculate number of nights - minimum 2 nights
+  const calculateNights = () => {
+    if (!checkIn || !checkOut) return 0;
+    const start = new Date(checkIn);
+    const end = new Date(checkOut);
+    const diffTime = end.getTime() - start.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const result = Math.max(diffDays, 0);
+    
+    console.log('🔢 calculateNights:', { checkIn, checkOut, diffTime, diffDays, result });
+    return result;
+  };
+
+  // Calculate total cost
+  const calculateTotalCost = () => {
+    const nights = calculateNights();
+    const pricePerNight = settings.night_price || 120;
+    const total = nights * pricePerNight;
+    
+    console.log('💰 calculateTotalCost:', { 
+      nights, 
+      pricePerNight, 
+      total,
+      settings: settings
+    });
+    
+    return total;
+  };
+
+  // Check if booking details are filled - minimum nights
+  const isBookingReady = checkIn && checkOut && (adults > 0 || children > 0) && calculateNights() >= MIN_NIGHTS;
+
+  // Format date to Greek format (dd/mm/yyyy)
+  const formatDateGreek = (dateString) => {
+    if (!dateString) return '';
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+  };
+
+  // Format date for display (dd-mm-yyyy)
+  const formatDateDisplay = (dateString) => {
+    if (!dateString) return '';
+    const [year, month, day] = dateString.split('-');
+    return `${day}-${month}-${year}`;
+  };
+
+  // Format currency - SIMPLIFIED VERSION
+  const formatCurrency = (amount) => {
+    console.log('💱 formatCurrency input:', amount, 'type:', typeof amount);
+    
+    if (amount === undefined || amount === null || isNaN(amount)) {
+      console.log('⚠️ Invalid amount, returning €0');
+      return '€0';
+    }
+    
+    const rounded = Math.round(amount);
+    const formatted = rounded.toLocaleString('el-GR');
+    const result = '€' + formatted;
+    
+    console.log('💱 formatCurrency output:', result);
+    return result;
+  };
+
+  // Handler for increment/decrement guests with new rules
+  const updateGuest = (type, operation) => {
+    const setters = {
+      adults: { 
+        set: setAdults, 
+        min: 1, 
+        max: settings.max_adults || 3,
+        getMax: () => settings.max_adults || 3
+      },
+      children: { 
+        set: setChildren, 
+        min: 0, 
+        max: () => {
+          // If adults >= max_adults, max children is 0
+          if (adults >= (settings.max_adults || 3)) return 0;
+          // If adults <= max_adults-1, max children is settings.max_children
+          return settings.max_children || 2;
+        },
+        getMax: () => {
+          if (adults >= (settings.max_adults || 3)) return 0;
+          return settings.max_children || 2;
+        }
+      },
+      infants: { 
+        set: setInfants, 
+        min: 0, 
+        max: settings.max_infants || 5
+      },
+    };
+    
+    const { set, min, max } = setters[type];
+    const maxValue = typeof max === 'function' ? max() : max;
+    
+    set((prev) => {
+      const newVal = operation === 'inc' ? prev + 1 : prev - 1;
+      return Math.min(Math.max(newVal, min), maxValue);
+    });
+  };
+
+  // Check if children should be disabled
+  const isChildrenDisabled = adults >= (settings.max_adults || 3);
+
+  // Total guests for display
+  const totalGuests = adults + children;
+
   // Preload images on component mount
   useEffect(() => {
     const preloadImages = async () => {
@@ -231,102 +398,75 @@ const Home = () => {
     preloadImages();
   }, []);
 
-  // Check if booking details are filled
-  const isBookingReady = checkIn && checkOut && (adults > 0 || children > 0);
-
-  // Format date to Greek format (dd/mm/yyyy)
-  const formatDateGreek = (dateString) => {
-    if (!dateString) return '';
-    const [year, month, day] = dateString.split('-');
-    return `${day}/${month}/${year}`;
-  };
-
-  // Format date for display (dd-mm-yyyy)
-  const formatDateDisplay = (dateString) => {
-    if (!dateString) return '';
-    const [year, month, day] = dateString.split('-');
-    return `${day}-${month}-${year}`;
-  };
-
-  // Handler for increment/decrement guests with new rules
-  const updateGuest = (type, operation) => {
-    const setters = {
-      adults: { 
-        set: setAdults, 
-        min: 1, 
-        max: 3,
-        getMax: () => {
-          // Max adults is always 3
-          return 3;
-        }
-      },
-      children: { 
-        set: setChildren, 
-        min: 0, 
-        max: () => {
-          // If adults >= 3, max children is 0
-          if (adults >= 3) return 0;
-          // If adults <= 2, max children is 2
-          return 2;
-        },
-        getMax: () => {
-          if (adults >= 3) return 0;
-          return 2;
-        }
-      },
-      infants: { 
-        set: setInfants, 
-        min: 0, 
-        max: 5 
-      },
-    };
-    
-    const { set, min, max } = setters[type];
-    const maxValue = typeof max === 'function' ? max() : max;
-    
-    set((prev) => {
-      const newVal = operation === 'inc' ? prev + 1 : prev - 1;
-      return Math.min(Math.max(newVal, min), maxValue);
-    });
-  };
-
-  // Check if children should be disabled
-  const isChildrenDisabled = adults >= 3;
-
-  // Total guests for display
-  const totalGuests = adults + children;
-
-  // Handle booking submit
-  const handleBooking = (e) => {
+  // Handle booking submit - UPDATED WITH FETCH
+  const handleBooking = async (e) => {
     e.preventDefault();
+    
+    // Check minimum stay
+    if (calculateNights() < MIN_NIGHTS) {
+      alert(`Minimum stay is ${MIN_NIGHTS} nights. Please select valid dates.`);
+      return;
+    }
+    
     if (!agreedToTerms) {
       alert('Please agree to the terms and conditions.');
       return;
     }
     
     // Validation for guest rules
-    if (adults >= 3 && children > 0) {
-      alert('With 3 adults, children are not allowed. Please adjust your guest count.');
+    if (adults >= (settings.max_adults || 3) && children > 0) {
+      alert(`With ${settings.max_adults} adults, children are not allowed. Please adjust your guest count.`);
       return;
     }
     
     const bookingData = {
       checkIn: formatDateDisplay(checkIn),
       checkOut: formatDateDisplay(checkOut),
+      nights: calculateNights(),
       adults,
       children,
       infants,
       fullName,
       email,
       phone,
+      totalCost: calculateTotalCost(),
+      pricePerNight: settings.night_price
     };
-    console.log('Booking submitted:', bookingData);
-    alert('Booking submitted successfully! We will contact you shortly.');
-    setShowBookingForm(false);
-    setEmail('');
-    setPhone('');
-    setFullName('');
-    setAgreedToTerms(false);
+    
+    console.log('📤 Sending booking to server:', bookingData);
+    
+    try {
+      const apiUrl = import.meta.env.PROD 
+        ? '/api/send-booking'
+        : '/api/send-booking';
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(bookingData),
+      });
+
+      console.log('📨 Response status:', response.status);
+      
+      const result = await response.json();
+      console.log('📨 Response data:', result);
+
+      if (response.ok) {
+        alert('✅ Booking submitted successfully! We will contact you shortly.');
+        setShowBookingForm(false);
+        setEmail('');
+        setPhone('');
+        setFullName('');
+        setAgreedToTerms(false);
+      } else {
+        alert(`❌ Error: ${result.error || 'Failed to submit booking. Please try again.'}`);
+      }
+    } catch (error) {
+      console.error('❌ Fetch error:', error);
+      alert('❌ Network error. Please check your connection and try again.');
+    }
   };
 
   // Quick date presets
@@ -344,17 +484,60 @@ const Home = () => {
     setCheckOut(end.toISOString().split('T')[0]);
   };
 
-  // Calculate number of nights
-  const calculateNights = () => {
-    if (!checkIn || !checkOut) return 0;
-    const start = new Date(checkIn);
-    const end = new Date(checkOut);
-    const diffTime = Math.abs(end - start);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+  const nights = calculateNights();
+  const totalCost = calculateTotalCost();
+
+  // Log whenever values change
+  useEffect(() => {
+    console.log('🔄 State updated:', {
+      checkIn,
+      checkOut,
+      nights,
+      totalCost,
+      nightPrice: settings.night_price,
+      showBookingForm
+    });
+  }, [checkIn, checkOut, nights, totalCost, settings.night_price, showBookingForm]);
+
+  // Handle check-in date change with minimum stay
+  const handleCheckInChange = (e) => {
+    const newCheckIn = e.target.value;
+    setCheckIn(newCheckIn);
+    
+    if (checkOut && newCheckIn) {
+      const minCheckOut = new Date(newCheckIn);
+      minCheckOut.setDate(minCheckOut.getDate() + MIN_NIGHTS);
+      minCheckOut.setHours(0, 0, 0, 0);
+      
+      const currentCheckOut = new Date(checkOut);
+      currentCheckOut.setHours(0, 0, 0, 0);
+      
+      if (currentCheckOut < minCheckOut) {
+        setCheckOut(minCheckOut.toISOString().split('T')[0]);
+      }
+    }
   };
 
-  const nights = calculateNights();
+  // Handle check-out date change with minimum stay
+  const handleCheckOutChange = (e) => {
+    const newCheckOut = e.target.value;
+    if (checkIn) {
+      const minCheckOut = new Date(checkIn);
+      minCheckOut.setDate(minCheckOut.getDate() + MIN_NIGHTS);
+      minCheckOut.setHours(0, 0, 0, 0);
+      
+      const selectedCheckOut = new Date(newCheckOut);
+      selectedCheckOut.setHours(0, 0, 0, 0);
+      
+      if (selectedCheckOut < minCheckOut) {
+        const correctedDate = minCheckOut.toISOString().split('T')[0];
+        setCheckOut(correctedDate);
+        alert(`Minimum stay is ${MIN_NIGHTS} nights. Check-out date has been adjusted.`);
+        return;
+      }
+    }
+    setCheckOut(newCheckOut);
+  };
 
   // Places data - Syros
   const places = [
@@ -542,6 +725,7 @@ const Home = () => {
                     <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
                       <span className="text-gray-400"><CalendarDays /></span>
                       <span>Select your dates</span>
+                      <span className="text-xs text-gray-400 ml-2">(Minimum {MIN_NIGHTS} nights stay)</span>
                     </div>
                     
                     {/* Preset chips */}
@@ -566,7 +750,7 @@ const Home = () => {
                           type="date"
                           id="checkIn"
                           value={checkIn}
-                          onChange={(e) => setCheckIn(e.target.value)}
+                          onChange={handleCheckInChange}
                           min={new Date().toISOString().split('T')[0]}
                           className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-900/20 focus:border-blue-900/30 transition-all"
                           required
@@ -583,8 +767,8 @@ const Home = () => {
                           type="date"
                           id="checkOut"
                           value={checkOut}
-                          onChange={(e) => setCheckOut(e.target.value)}
-                          min={checkIn || new Date().toISOString().split('T')[0]}
+                          onChange={handleCheckOutChange}
+                          min={checkIn ? new Date(new Date(checkIn).setDate(new Date(checkIn).getDate() + MIN_NIGHTS)).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
                           className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-900/20 focus:border-blue-900/30 transition-all"
                           required
                         />
@@ -595,6 +779,17 @@ const Home = () => {
                         )}
                       </div>
                     </div>
+                    
+                    {/* Show nights count with minimum stay warning */}
+                    {checkIn && checkOut && (
+                      <div className={`text-sm ${nights >= MIN_NIGHTS ? 'text-gray-600' : 'text-red-500 font-medium'}`}>
+                        {nights >= MIN_NIGHTS ? (
+                          <span>🛏️ {nights} {nights === 1 ? 'night' : 'nights'}</span>
+                        ) : (
+                          <span>⚠️ Please select at least {MIN_NIGHTS} nights</span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Guests */}
@@ -603,7 +798,7 @@ const Home = () => {
                       <span className="text-gray-400"><Users /></span>
                       <span>Number of guests</span>
                       <span className="text-xs text-gray-400 ml-2">
-                        (Max 3 adults, children only with 1-2 adults)
+                        (Max {settings.max_adults || 3} adults, children only with 1-{settings.max_adults-1 || 2} adults)
                       </span>
                     </div>
                     
@@ -627,14 +822,14 @@ const Home = () => {
                           <div className="flex items-center justify-between">
                             <div>
                               <div className="text-sm font-medium text-gray-800">Adults</div>
-                              <div className="text-xs text-gray-400">Age 13+ (Max 3)</div>
+                              <div className="text-xs text-gray-400">Age 13+ (Max {settings.max_adults || 3})</div>
                             </div>
                             <div className="flex items-center gap-3">
                               <button type="button" onClick={() => updateGuest('adults', 'dec')} disabled={adults <= 1} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
                                 <Minus />
                               </button>
                               <span className="w-6 text-center text-sm font-medium">{adults}</span>
-                              <button type="button" onClick={() => updateGuest('adults', 'inc')} disabled={adults >= 3} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                              <button type="button" onClick={() => updateGuest('adults', 'inc')} disabled={adults >= (settings.max_adults || 3)} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
                                 <Plus />
                               </button>
                             </div>
@@ -646,7 +841,7 @@ const Home = () => {
                               <div className="text-sm font-medium text-gray-800">Children</div>
                               <div className="text-xs text-gray-400">
                                 Ages 2–12 
-                                {adults >= 3 ? ' (Not allowed with 3 adults)' : ' (Max 2)'}
+                                {adults >= (settings.max_adults || 3) ? ` (Not allowed with ${settings.max_adults} adults)` : ` (Max ${settings.max_children || 2})`}
                               </div>
                             </div>
                             <div className="flex items-center gap-3">
@@ -662,7 +857,7 @@ const Home = () => {
                               <button 
                                 type="button" 
                                 onClick={() => updateGuest('children', 'inc')} 
-                                disabled={children >= 2 || isChildrenDisabled} 
+                                disabled={children >= (settings.max_children || 2) || isChildrenDisabled} 
                                 className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                               >
                                 <Plus />
@@ -674,14 +869,14 @@ const Home = () => {
                           <div className="flex items-center justify-between">
                             <div>
                               <div className="text-sm font-medium text-gray-800">Infants</div>
-                              <div className="text-xs text-gray-400">Under 2 (Max 5)</div>
+                              <div className="text-xs text-gray-400">Under 2 (Max {settings.max_infants || 5})</div>
                             </div>
                             <div className="flex items-center gap-3">
                               <button type="button" onClick={() => updateGuest('infants', 'dec')} disabled={infants <= 0} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
                                 <Minus />
                               </button>
                               <span className="w-6 text-center text-sm font-medium">{infants}</span>
-                              <button type="button" onClick={() => updateGuest('infants', 'inc')} disabled={infants >= 5} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                              <button type="button" onClick={() => updateGuest('infants', 'inc')} disabled={infants >= (settings.max_infants || 5)} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
                                 <Plus />
                               </button>
                             </div>
@@ -701,39 +896,40 @@ const Home = () => {
                   <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-3">
                     <p className="text-xs text-blue-800">
                       👶 Infants (under 2) stay free of charge. 
-                      {adults >= 3 ? (
+                      {adults >= (settings.max_adults || 3) ? (
                         <span className="block mt-1 text-orange-600 font-medium">
-                          ⚠️ With 3 adults, children are not allowed.
+                          ⚠️ With {settings.max_adults} adults, children are not allowed.
                         </span>
                       ) : (
                         <span className="block mt-1">
-                          Children (2-12) allowed only when adults are 1-2 (max 2 children).
+                          Children (2-12) allowed only when adults are 1-{settings.max_adults-1 || 2} (max {settings.max_children || 2} children).
                         </span>
                       )}
                     </p>
                   </div>
 
                   {/* Check availability button */}
-                  {isBookingReady && (
+                  {isBookingReady ? (
                     <button
                       type="button"
-                      onClick={() => setShowBookingForm(true)}
+                      onClick={() => {
+                        console.log('📋 Opening booking form. Total cost:', totalCost);
+                        setShowBookingForm(true);
+                      }}
                       className="w-full bg-blue-900 text-white py-4 rounded-xl text-sm font-medium hover:bg-blue-800 transition-colors duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
                     >
                       <span className="opacity-70"><Search /></span>
                       Continue to Booking
                     </button>
-                  )}
-
-                  {!isBookingReady && (
+                  ) : (
                     <div className="w-full bg-gray-100 text-gray-400 py-4 rounded-xl text-sm font-medium flex items-center justify-center gap-2">
                       <span className="opacity-70"><Search /></span>
-                      Please select dates and guests
+                      {!checkIn || !checkOut ? 'Please select dates' : `Minimum ${MIN_NIGHTS} nights stay required`}
                     </div>
                   )}
 
                   <p className="text-xs text-center text-gray-400">
-                    You won't be charged yet • Free cancellation within 48h
+                    You won't be charged yet • Free cancellation within 48h • Minimum {MIN_NIGHTS} nights stay
                   </p>
                 </form>
               </div>
@@ -921,7 +1117,7 @@ const Home = () => {
               </button>
             </div>
 
-            {/* Booking summary with Greek date format */}
+            {/* Booking summary with Greek date format and total cost */}
             <div className="bg-blue-50/50 rounded-xl p-4 mb-6">
               <h3 className="text-sm font-medium text-gray-700 mb-2">Booking Summary</h3>
               <div className="space-y-1 text-sm text-gray-600">
@@ -938,11 +1134,27 @@ const Home = () => {
                   <span className="font-medium">{nights}</span>
                 </div>
                 <div className="flex justify-between">
+                  <span>Price per night:</span>
+                  <span className="font-medium">{formatCurrency(settings.night_price)}</span>
+                </div>
+                <div className="flex justify-between">
                   <span>Guests:</span>
                   <span className="font-medium">
                     {totalGuests} {totalGuests === 1 ? 'guest' : 'guests'}
                     {infants > 0 && ` + ${infants} infant${infants > 1 ? 's' : ''}`}
                   </span>
+                </div>
+                <div className="border-t-2 border-blue-200 pt-2 mt-2">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-gray-800 text-base">Total Cost:</span>
+                    <span className="font-bold text-blue-900 text-xl">
+                      {console.log('🎯 Rendering total cost in sidebar:', { totalCost, nights, pricePerNight: settings.night_price })}
+                      {formatCurrency(totalCost)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 text-right mt-0.5">
+                    {formatCurrency(settings.night_price)} × {nights} nights
+                  </p>
                 </div>
               </div>
             </div>
@@ -1024,7 +1236,7 @@ const Home = () => {
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 }`}
               >
-                Confirm Booking
+                Confirm Booking - {formatCurrency(totalCost)}
               </button>
 
               <button
