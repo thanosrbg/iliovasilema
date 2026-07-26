@@ -1,6 +1,6 @@
 // src/components/AdminLogin.jsx
-import React, { useState } from 'react';
-import { supabase } from '../lib/supabase';
+import React, { useState, useEffect } from 'react';
+import { supabase, checkEnvironment } from '../lib/supabase';
 
 const AdminLogin = ({ onLoginSuccess }) => {
   const [email, setEmail] = useState('');
@@ -8,6 +8,14 @@ const AdminLogin = ({ onLoginSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [envStatus, setEnvStatus] = useState(null);
+
+  useEffect(() => {
+    // Check environment on mount
+    const env = checkEnvironment();
+    setEnvStatus(env);
+    console.log('🔧 AdminLogin - Environment:', env);
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -15,18 +23,44 @@ const AdminLogin = ({ onLoginSuccess }) => {
     setError(null);
 
     try {
+      console.log('📧 Attempting login for:', email);
+      
+      // Double-check environment
+      if (!envStatus?.hasKey || !envStatus?.url) {
+        throw new Error('Supabase is not configured properly');
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Auth error:', error);
+        throw error;
+      }
 
       console.log('✅ Login successful:', data);
-      onLoginSuccess(data.user);
+      
+      if (data.user) {
+        onLoginSuccess(data.user);
+      }
     } catch (err) {
       console.error('❌ Login error:', err);
-      setError(err.message || 'Failed to login. Please try again.');
+      
+      let errorMessage = err.message || 'Failed to login. Please try again.';
+      
+      if (err.message?.includes('Invalid login credentials')) {
+        errorMessage = 'Invalid email or password. Please try again.';
+      } else if (err.message?.includes('Email not confirmed')) {
+        errorMessage = 'Please confirm your email address before logging in. Check your inbox.';
+      } else if (err.message?.includes('Invalid path specified')) {
+        errorMessage = 'Configuration error. Please check your Supabase URL in environment variables.';
+      } else if (err.message?.includes('Supabase is not configured')) {
+        errorMessage = '⚠️ Supabase is not configured. Please check your environment variables.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -38,6 +72,8 @@ const AdminLogin = ({ onLoginSuccess }) => {
     setError(null);
 
     try {
+      console.log('📧 Attempting signup for:', email);
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -46,15 +82,31 @@ const AdminLogin = ({ onLoginSuccess }) => {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Signup error:', error);
+        throw error;
+      }
+
+      console.log('✅ Signup successful:', data);
 
       if (data.user) {
         alert('✅ Account created! Please check your email to confirm your account.');
         setIsSignUp(false);
+        setPassword('');
+        setError(null);
       }
     } catch (err) {
       console.error('❌ Signup error:', err);
-      setError(err.message || 'Failed to create account. Please try again.');
+      
+      let errorMessage = err.message || 'Failed to create account. Please try again.';
+      
+      if (err.message?.includes('User already registered')) {
+        errorMessage = 'This email is already registered. Please sign in instead.';
+      } else if (err.message?.includes('Password should be at least 6 characters')) {
+        errorMessage = 'Password must be at least 6 characters long.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -70,8 +122,14 @@ const AdminLogin = ({ onLoginSuccess }) => {
           </p>
         </div>
 
+        {envStatus && !envStatus.hasKey && (
+          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-800 text-sm">
+            ⚠️ Supabase is not configured. Please check environment variables.
+          </div>
+        )}
+
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm whitespace-pre-wrap">
             {error}
           </div>
         )}
@@ -88,7 +146,7 @@ const AdminLogin = ({ onLoginSuccess }) => {
               required
               className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-900/20 transition"
               placeholder="admin@example.com"
-              disabled={loading}
+              disabled={loading || !envStatus?.hasKey}
             />
           </div>
 
@@ -103,7 +161,7 @@ const AdminLogin = ({ onLoginSuccess }) => {
               required
               className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-900/20 transition"
               placeholder="••••••••"
-              disabled={loading}
+              disabled={loading || !envStatus?.hasKey}
               minLength={6}
             />
             <p className="text-xs text-gray-400 mt-1">
@@ -113,9 +171,9 @@ const AdminLogin = ({ onLoginSuccess }) => {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !envStatus?.hasKey}
             className={`w-full py-3 rounded-xl text-white font-medium transition ${
-              loading
+              loading || !envStatus?.hasKey
                 ? 'bg-gray-400 cursor-not-allowed'
                 : 'bg-blue-900 hover:bg-blue-800'
             }`}
@@ -131,7 +189,7 @@ const AdminLogin = ({ onLoginSuccess }) => {
               setError(null);
             }}
             className="text-sm text-blue-900 hover:text-blue-700 transition"
-            disabled={loading}
+            disabled={loading || !envStatus?.hasKey}
           >
             {isSignUp 
               ? 'Already have an account? Sign In' 
@@ -139,11 +197,16 @@ const AdminLogin = ({ onLoginSuccess }) => {
           </button>
         </div>
 
-        <div className="mt-6 pt-6 border-t border-gray-200">
-          <p className="text-xs text-gray-400 text-center">
-            🔒 Secure authentication powered by Supabase
-          </p>
-        </div>
+        {/* Debug Info */}
+        <details className="mt-6 pt-6 border-t border-gray-200">
+          <summary className="text-xs text-gray-400 cursor-pointer">Debug Info</summary>
+          <div className="mt-2 p-2 bg-gray-50 rounded text-xs font-mono">
+            <p>URL: {envStatus?.url || 'Not set'}</p>
+            <p>Key: {envStatus?.hasKey ? '✅ Present' : '❌ Missing'}</p>
+            <p>Mode: {envStatus?.mode || 'Unknown'}</p>
+            <p>Environment: {envStatus?.isProd ? 'Production' : envStatus?.isDev ? 'Development' : 'Unknown'}</p>
+          </div>
+        </details>
       </div>
     </div>
   );
